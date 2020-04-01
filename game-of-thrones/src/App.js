@@ -4,19 +4,12 @@ import './App.css';
 import axios from 'axios';
 
 let q1URL="https://anapioficeandfire.com/api/characters/16";
-let q1Ans={};
 let q2URL="https://www.anapioficeandfire.com/api/houses/378";
-let q2Ans={};
 let q3URL="https://www.anapioficeandfire.com/api/houses/229";
-let q3Ans={};
 let q4URL="https://www.anapioficeandfire.com/api/houses/17";
-let q4Ans={};
 let q5URL="https://www.anapioficeandfire.com/api/characters/901";
-let q5Ans={};
 let q6URL="https://www.anapioficeandfire.com/api/houses/362";
-let q6Ans={};
 let q7URL="https://www.anapioficeandfire.com/api/characters/232";
-let q7Ans={};
 
 export default class App extends Component {
 
@@ -25,11 +18,56 @@ export default class App extends Component {
     this.state={answers: []}  //array of answer strings
 
     this.axiosGetData=this.axiosGetData.bind(this);
+    this.chainedRequestOne=this.chainedRequestOne.bind(this);
+    this.chainedRequestTwo=this.chainedRequestTwo.bind(this);
   }
 
-  axiosGetData(url, idx, attr, attrElemIdx) {  
+  chainedRequestTwo(url, idx, attr) {
+
+    axios.get(url)
+    .then (response=> {
+      let resp=response.data;
+      console.log('2nd resp of chain--->', resp);
+
+      let arr=this.state.answers;
+      // use attrElemIdx to find answer string if resp[attr] is array; otherwise answer is resp[attr] 
+      let attrValue=resp[attr];
+      arr[idx]=attrValue;   
+      this.setState({answers: arr});   //setState wants to update the entire array, not just an element
+
+    })
+    .catch(error=>{
+      console.log('there is an error', error)
+    })
+  }
+
+  chainedRequestOne(url, idx, attr, nextAttr) { //first request of a chain of 2 requests
+    //idx is question #, attr is response field containing anwser  
+    //nextAttr is the response field in the next request that will contain answer
+
+    axios.get(url)
+    .then (response=> {
+      let resp=response.data;
+      console.log('1st resp of chain--->', resp);
+
+      let nextURL=resp[attr]; //expecting an URL
+      this.chainedRequestTwo(nextURL, idx, nextAttr);
+    })
+    .catch(error=>{
+      console.log('there is an error', error)
+    })
+
+  }
+
+  axiosGetData(url, idx, attr, attrElemIdx, chainedRequest, nextAttr) {  
     //idx is question #, attr is response field containing anwser, 
     //attrElemIdx is idx to answer in case attr is an array
+    //chainedRequest causes a cascade of requests to find answer
+    
+    if (chainedRequest) {
+      this.chainedRequestOne(url, idx, attr, nextAttr);
+    }
+
     axios.get(url)
     .then (response=> {
       let resp=response.data;
@@ -51,9 +89,9 @@ export default class App extends Component {
     this.axiosGetData(q1URL, 1, 'born');
     this.axiosGetData(q2URL, 2, 'region');
     this.axiosGetData(q3URL, 3, 'coatOfArms');
-    this.axiosGetData(q4URL, 4, 'seats', 1);
-    this.axiosGetData(q5URL, 5, 'aliases', 1);
-    this.axiosGetData(q6URL, 6, 'born');
+    this.axiosGetData(q4URL, 4, 'seats', 1);   //get 2nd elem of an array
+    this.axiosGetData(q5URL, 5, 'aliases', 1); //get 2nd elem of an array
+    this.axiosGetData(q6URL, 6, 'founder', 0, true, 'name'); //chain to one more get request, last parm is the attr name for 2nd response that contains answer
     this.axiosGetData(q7URL, 7, 'born');
   }
 
@@ -72,7 +110,7 @@ export default class App extends Component {
             <h2>Q5. What is Robert Baratheon's second alias?</h2>
             <h2>Ans: {this.state.answers[5]}</h2>
             <h2>Q6. What's the name of the founder of House Stark? (You have to chain fetch requests!)</h2>
-            <h2>Ans: {this.state.answers[1]}</h2>
+            <h2>Ans: {this.state.answers[6]}</h2>
             <h2>Q7. What are the titles of Catelyn Stark's three POV books? (Look into Promise.all to request these simultaniously)
 </h2>
             <h2>Ans: {this.state.answers[1]}</h2>
